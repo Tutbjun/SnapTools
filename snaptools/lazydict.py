@@ -1,4 +1,7 @@
-from collections import MutableMapping
+try:
+    from collections import MutableMapping
+except ImportError:
+    from collections.abc import MutableMapping
 from threading import RLock
 from inspect import getargspec
 from copy import copy
