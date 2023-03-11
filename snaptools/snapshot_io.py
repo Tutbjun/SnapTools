@@ -127,6 +127,8 @@ class SnapLazy(Snapshot):
                 else:
                     self.header[head_key] = head_val
             # setup loaders
+            if len(part_names) > len(self.header['nall']):
+                raise ValueError("Too many particle types specified")
             for i, part in enumerate(part_names):
                 if self.header['nall'][i] > 0:
                     for key in s['PartType%d' % i].keys():
