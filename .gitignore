@@ -6,3 +6,4 @@ build/
 tests/galaxies1.hdf5
 *.png
 *.pdf
+SnapTools.egg-info/
