@@ -395,6 +395,8 @@ class Snapshot(object):
         ptype = settings['parttype']
         panels = settings['panel_mode']
         head = self.header
+        if ptype not in self.part_names:
+            raise ValueError('Invalid parttype: %s' % ptype + '. Part not present in snapshot')
         if ((getattr(ptype, '__iter__', None) is not None) and  # add additional check due to python3
             (not isinstance(ptype, (str, bytes)))):
             pos = np.append(*[self.pos[k] for k in ptype], axis=0)
