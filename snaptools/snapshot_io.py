@@ -107,7 +107,7 @@ class SnapLazy(Snapshot):
                           'sfr',
                           'other']
 
-        self.part_names = part_names
+        
 
         self.settings = utils.make_settings(**kwargs)
         self.bin_dict = None
@@ -126,9 +126,10 @@ class SnapLazy(Snapshot):
                     self.header[HEAD_ATTRS[head_key]] = head_val
                 else:
                     self.header[head_key] = head_val
-            # setup loaders
-            if len(part_names) > len(self.header['nall']):
-                raise ValueError("Too many particle types specified")
+            #only taking first elements coresponding to gadget NTYPES
+            part_names = part_names[:len(self.header['nall'])]
+            self.part_names = part_names
+            # setup loaders for each particle type
             for i, part in enumerate(part_names):
                 if self.header['nall'][i] > 0:
                     for key in s['PartType%d' % i].keys():
