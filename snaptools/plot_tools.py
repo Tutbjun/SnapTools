@@ -48,7 +48,7 @@ def plot_single(name,
                 xlen=20,
                 ylen=20,
                 zlen=20,
-                colorbar='None',
+                colorbar=None,
                 parttype='stars',
                 NBINS=512):
     """
@@ -150,7 +150,7 @@ def plot_combined(names,
               xlen=20,
               ylen=20,
               zlen=20,
-              colorbar='None',
+              colorbar=None,
               parttype='stars',
               NBINS=512,
               snapbase="snap_"):

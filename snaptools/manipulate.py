@@ -55,7 +55,7 @@ def bin_particles(p1,
     Z2, ind1, ind2 = np.histogram2d(p1, p2, range=[extents1,
                                                    extents2],
                                     weights=mass * 1E10,
-                                    bins=BINS, normed=False)
+                                    bins=BINS,density=False)
     # Turn number into density (in units Msun/pc^2)
     Z2 = Z2 / (length2 / BINS * 1E3 * length1 / BINS * 1E3)
     # Log scale the data
