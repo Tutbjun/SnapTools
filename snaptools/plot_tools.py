@@ -18,6 +18,17 @@ today = datetime.date.today().strftime('%b%d')
 class KeyboardInterruptError(Exception):
     pass
 
+def path2OsPath(path):
+    osPathSep = os.path.sep
+    if osPathSep == "\\":
+        if "./" in path[:2]:
+            path = path[2:]
+        if "/" in path:
+            path = path.replace("/", osPathSep)
+    elif osPathSep == "/":
+        if "\\" in path:
+            path = path.replace("\\", osPathSep)
+    return path
 
 def plot_single(name,
                 settings=None,
@@ -63,27 +74,10 @@ def plot_single(name,
       colorbar: Colorbar mode (None (Default), Single... )
       parttype: particle type (Gas, Halo, Stars...)
     """
-    osPathSep = os.path.sep
-    if osPathSep == "\\":
-        if "./" in folder[:2]:
-            folder = folder[2:]
-        if "/" in folder:
-            folder = folder.replace("/", osPathSep)
-        if "./" in base[:2]:
-            base = base[2:]
-        if "/" in base:
-            base = base.replace("/", osPathSep)
-        if "./" in name[:2]:
-            name = name[2:]
-        if "/" in name:
-            name = name.replace("/", osPathSep)
-    elif osPathSep == "/":
-        if "\\" in folder:
-            folder = folder.replace("\\", osPathSep)
-        if "\\" in base:
-            base = base.replace("\\", osPathSep)
-        if "\\" in name:
-            name = name.replace("\\", osPathSep)
+    name = path2OsPath(name)
+    folder = path2OsPath(folder)
+    base = path2OsPath(base)
+    
     output_dir = os.path.join(folder, "plot")
     snapbase = name
     fname = os.path.join(base, snapbase)
@@ -139,7 +133,7 @@ def plot_single(name,
     return plot_stars(snapshot.Snapshot(fname).bin_snap(settings), outname, settings)
 
 
-def plot_loop(snaps,
+def plot_combined(snaps,
               settings=None,
               folder="./",
               output_dir="./",
@@ -195,8 +189,9 @@ def plot_loop(snaps,
       parttype: particle type (Gas, Halo, Stars...)
     """
     import re
-
-    output_name = output_dir+"plot"
+    output_dir = path2OsPath(output_dir)
+    folder = path2OsPath(folder)
+    output_name = os.path.join(output_dir,"plot")
 
     if settings is None:
         settings = utils.make_settings(panel_mode=panel_mode,
@@ -241,7 +236,7 @@ def plot_loop(snaps,
     # Turn list of snapnumbers into names if not already
     snaps = utils.list_snapshots(snaps, folder, snapbase)
     settings_array = []
-    for i, s in enumerate(snaps):
+    for i, s in enumerate(snaps):#!change to combine setting instead of making seperate settings
         settings_array.append(settings.copy())
         settings_array[i]['filename'] = s
 
@@ -252,10 +247,15 @@ def plot_loop(snaps,
             n = str(i)
 
         settings_array[i]['outputname'] = output_name + n + ".png"
-
-    pool = Pool()
-    figs = pool.map(plot_stars_helper, settings_array)
-    return figs
+    # Combine snapshots into one
+    combinedSnap, setting = combineSnapshots(snaps, settings_array[0])
+    #pool = Pool()
+    return plot_single(combinedSnap, setting)
+    """figs = []
+    for setting in settings_array:
+        figs.append(plot_stars_helper(setting))
+    #figs = pool.map(plot_stars_helper, settings_array)
+    return figs"""
 
 def plot_stars_helper(settings):
     """
