@@ -141,6 +141,8 @@ class SnapLazy(Snapshot):
                             self.__dict__[attr_name] = lazydict.MutableLazyDictionary()
                         self.__dict__[attr_name][part] = partial(load_dataset, self.filename,
                                                                  "PartType%d" % i, key)
+                else:
+                    raise ValueError("No particles of type %s" % part)
 
             if any(self.header['massarr']):
                 wmass, = np.where(self.header['massarr'])
