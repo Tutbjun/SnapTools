@@ -76,6 +76,8 @@ class LazyDictionary(MutableMapping):
                                 self.states[key] = 'error'
                                 raise ex
                     self.states[key] = 'evaluated'
+            else:
+                raise KeyError(key)
             return self.values[key]
 
     def __contains__(self, key):
