@@ -420,7 +420,9 @@ def plot_stars(binDict,
 
         cbar = grid.cbar_axes[0].colorbar(im)
         if scale:
+            cbar.set_label('Log[M$_{\odot}$ pc$^{-2}$]')
         else:
+            cbar.set_label('M$_{\odot}$ pc$^{-2}$')
 
     if panels == "small":
       # Smaller edge-on panels next to a face-on panel
