@@ -11,6 +11,7 @@ from . import measure
 from multiprocess import Pool
 import itertools
 import datetime
+import os
 today = datetime.date.today().strftime('%b%d')
 
 
@@ -62,11 +63,35 @@ def plot_single(name,
       colorbar: Colorbar mode (None (Default), Single... )
       parttype: particle type (Gas, Halo, Stars...)
     """
-
-    output_dir = folder + "plot"
+    osPathSep = os.path.sep
+    if osPathSep == "\\":
+        if "./" in folder[:2]:
+            folder = folder[2:]
+        if "/" in folder:
+            folder = folder.replace("/", osPathSep)
+        if "./" in base[:2]:
+            base = base[2:]
+        if "/" in base:
+            base = base.replace("/", osPathSep)
+        if "./" in name[:2]:
+            name = name[2:]
+        if "/" in name:
+            name = name.replace("/", osPathSep)
+    elif osPathSep == "/":
+        if "\\" in folder:
+            folder = folder.replace("\\", osPathSep)
+        if "\\" in base:
+            base = base.replace("\\", osPathSep)
+        if "\\" in name:
+            name = name.replace("\\", osPathSep)
+    output_dir = os.path.join(folder, "plot")
     snapbase = name
-    fname = base + snapbase
-    outname = output_dir + name + ".png"
+    fname = os.path.join(base, snapbase)
+    outname = os.path.join(output_dir, name + ".png")
+    p = ""
+    for f in outname.split(osPathSep)[:-1]:
+        p = os.path.join(p, f)
+        os.makedirs(p, exist_ok=True)
     if settings is None:
         settings = utils.make_settings(panel_mode = panel_mode,
                                        log_scale = log_scale,
@@ -395,9 +420,7 @@ def plot_stars(binDict,
 
         cbar = grid.cbar_axes[0].colorbar(im)
         if scale:
-            cbar.set_label_text('Log[M$_{\odot}$ pc$^{-2}$]')
         else:
-            cbar.set_label_text('M$_{\odot}$ pc$^{-2}$')
 
     if panels == "small":
       # Smaller edge-on panels next to a face-on panel
