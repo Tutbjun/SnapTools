@@ -82,6 +82,7 @@ def plot_single(name,
     snapbase = name
     fname = os.path.join(base, snapbase)
     outname = os.path.join(output_dir, name + ".png")
+    osPathSep = os.path.sep
     p = ""
     for f in outname.split(osPathSep)[:-1]:
         p = os.path.join(p, f)
@@ -129,14 +130,14 @@ def plot_single(name,
             settings['parttype'] = parttype
     else:
         raise RuntimeError("Not a valid particle type")
+    binSnap = snapshot.Snapshot(fname).bin_snap(settings)#!why naaans?????????????????????
+    return plot_stars(binSnap, outname, settings)
 
-    return plot_stars(snapshot.Snapshot(fname).bin_snap(settings), outname, settings)
 
-
-def plot_combined(snaps,
+def plot_combined(names,
               settings=None,
               folder="./",
-              output_dir="./",
+              base="./",
               panel_mode="xy",
               log_scale=True,
               in_min=-1,
@@ -189,9 +190,19 @@ def plot_combined(snaps,
       parttype: particle type (Gas, Halo, Stars...)
     """
     import re
-    output_dir = path2OsPath(output_dir)
+    name = path2OsPath(names[0])
     folder = path2OsPath(folder)
-    output_name = os.path.join(output_dir,"plot")
+    base = path2OsPath(base)
+    
+    output_dir = os.path.join(folder, "plot")
+    snapbase = names[0]
+    fname = os.path.join(base, snapbase)
+    outname = os.path.join(output_dir, name[0] + ".png")
+    osPathSep = os.path.sep
+    p = ""
+    for f in outname.split(osPathSep)[:-1]:
+        p = os.path.join(p, f)
+        os.makedirs(p, exist_ok=True)
 
     if settings is None:
         settings = utils.make_settings(panel_mode=panel_mode,
@@ -209,6 +220,9 @@ def plot_combined(snaps,
                                        NBINS=NBINS)
 
     settings['colormap'] = colormap
+
+    settings['colorbar'] = colorbar
+    settings['NBINS'] = NBINS
 
     part_names = ['gas',
                   'halo',
@@ -234,41 +248,17 @@ def plot_combined(snaps,
         raise RuntimeError("Not a valid particle type")
 
     # Turn list of snapnumbers into names if not already
-    snaps = utils.list_snapshots(snaps, folder, snapbase)
-    settings_array = []
-    for i, s in enumerate(snaps):#!change to combine setting instead of making seperate settings
-        settings_array.append(settings.copy())
-        settings_array[i]['filename'] = s
-
-        m = re.search(snapbase+'([0-9]+)', s)
-        if m is not None:
-            n = m.group(1)
-        else:
-            n = str(i)
-
-        settings_array[i]['outputname'] = output_name + n + ".png"
-    # Combine snapshots into one
-    combinedSnap, setting = combineSnapshots(snaps, settings_array[0])
-    #pool = Pool()
-    return plot_single(combinedSnap, setting)
-    """figs = []
-    for setting in settings_array:
-        figs.append(plot_stars_helper(setting))
-    #figs = pool.map(plot_stars_helper, settings_array)
-    return figs"""
-
-def plot_stars_helper(settings):
-    """
-    Helper function for multiprocessing pool
-    """
-    fname = settings['filename']
-    outname = settings['outputname']
-    snap = snapshot.Snapshot(fname)
-    if snap is None:
-      raise IOError("Snapshot {:s} not found.".format(fname))
-
-    return plot_stars(snap.bin_snap(settings), outname, settings)
-
+    snapPaths = utils.list_snapshots(names, folder, snapbase)
+    snaps = []
+    for snapPath in snapPaths:
+        snaps.append(snapshot.Snapshot(snapPath).bin_snap(settings))
+    combinedSnap = snaps[0]
+    for snap in snaps[1:]:
+        ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
+        for ZKey in ZKeys:
+            if ZKey in combinedSnap:
+                combinedSnap[ZKey] = combinedSnap[ZKey] + snap[ZKey]
+    return plot_stars(combinedSnap, outname, settings)
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     """
