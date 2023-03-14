@@ -315,9 +315,14 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     else:
         im = axis.pcolormesh(centerX, centerY, Z, vmin=Zmin, vmax=Zmax,
                              cmap=cmap)
-
-    axis.set_xlim([-extent[0], extent[0]])
-    axis.set_ylim([-extent[1], extent[1]])
+    if getattr(extent[0], '__iter__', None) is not None:
+        axis.set_xlim(*extent[0])
+    else:
+        axis.set_xlim([-extent[0], extent[0]])
+    if getattr(extent[1], '__iter__', None) is not None:
+        axis.set_ylim(*extent[1])
+    else:
+        axis.set_ylim([-extent[1], extent[1]])
 
     #axis.axis([-extent[0], extent[0], -extent[1], extent[1]])
 
