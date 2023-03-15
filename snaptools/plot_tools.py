@@ -12,6 +12,7 @@ from multiprocess import Pool
 import itertools
 import datetime
 import os
+from scipy.ndimage.filters import gaussian_filter
 today = datetime.date.today().strftime('%b%d')
 
 
@@ -50,7 +51,8 @@ def plot_single(name,
                 zlen=20,
                 colorbar=None,
                 parttype='stars',
-                NBINS=512):
+                NBINS=512,
+                smoothen=True):
     """
     Plot a single snapshot
     Kwargs:
@@ -131,7 +133,7 @@ def plot_single(name,
     else:
         raise RuntimeError("Not a valid particle type")
     binSnap = snapshot.Snapshot(fname).bin_snap(settings)
-    return plot_stars(binSnap, outname, settings)
+    return plot_stars(binSnap, outname, settings,smoothen=smoothen)
 
 
 def plot_combined(names,
@@ -153,7 +155,8 @@ def plot_combined(names,
               colorbar=None,
               parttype='stars',
               NBINS=512,
-              snapbase="snap_"):
+              snapbase="snap_",
+              smoothen=True):
     """
     Plot a range of snapshots
     Args:
@@ -258,7 +261,8 @@ def plot_combined(names,
         for ZKey in ZKeys:
             if ZKey in combinedSnap:
                 combinedSnap[ZKey] = combinedSnap[ZKey] + snap[ZKey]
-    return plot_stars(combinedSnap, outname, settings)
+    
+    return plot_stars(combinedSnap, outname, settings,smoothen=smoothen)
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     """
@@ -338,7 +342,8 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
 def plot_stars(binDict,
                outname,
                settings,
-               returnOnly=False):
+               returnOnly=False,
+               smoothen=False):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # Get the settings
@@ -346,6 +351,8 @@ def plot_stars(binDict,
     scale = settings['log_scale']
     cbarmode = settings['colorbar']
 
+    if smoothen:#!bad implementation, should be more integrated (in settings, functions, etc)
+        binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=12.0)
 #for mass weighted histogram
 #size in units of scale length
 
