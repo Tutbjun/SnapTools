@@ -70,7 +70,7 @@ def measure_fourier(r, theta, length, BINS_r, BINS_theta):
     Z2, x, y = np.histogram2d(r, theta, range=[[0, length],
                                                [-np.pi, np.pi]],
                               bins=[BINS_r, BINS_theta],
-                              normed=False)
+                              density=False)
 
     Z2 = Z2.astype('float64')
     sinrange = np.zeros((BINS_theta, 10))
