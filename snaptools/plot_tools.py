@@ -37,7 +37,7 @@ def plot_single(name,
                 panel_mode="xy",
                 log_scale=True,
                 in_min=-1,
-                in_max=2.2,
+                in_max=None,
                 com=False,
                 plotCompanionCOM=False,
                 plotDiskCOM=False,
@@ -130,7 +130,7 @@ def plot_single(name,
             settings['parttype'] = parttype
     else:
         raise RuntimeError("Not a valid particle type")
-    binSnap = snapshot.Snapshot(fname).bin_snap(settings)#!why naaans?????????????????????
+    binSnap = snapshot.Snapshot(fname).bin_snap(settings)
     return plot_stars(binSnap, outname, settings)
 
 
@@ -141,7 +141,7 @@ def plot_combined(names,
               panel_mode="xy",
               log_scale=True,
               in_min=-1,
-              in_max=2.2,
+              in_max=None,
               com=False,
               gal_num=-1,
               first_only=False,
@@ -291,14 +291,23 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     extent = [extent[i] for i in axes]
 
     # Scale the data for pretty plots
+    if (Zmax == None):
+        Zmax = Z.max()
+    if (Zmin == None):
+        Zmin = Z[Z > -np.inf].min()
     if ((Zmax == 0.0) & (Zmin == 0.0)):
             Zmin = Z[Z > -np.inf].min()
             Zmax = Z.max()
-
+    
     #we likely have NaN values, ignore those and keep them as NaNs
     with np.errstate(invalid='ignore'):
-      Z[Z < Zmin] = Zmin
-      Z[Z > Zmax] = Zmax
+        Z[Z < Zmin] = Zmin
+        Zmin = Z.min()
+        Z -= Zmin
+        Z /= (Zmax - Zmin)
+        Z[Z > 1.0] = 1.0
+        Z *= (Zmax - Zmin)
+        Z += Zmin
 
     if im_func is not None:
         im = axis.pcolormesh(centerX, centerY, im_func(Z), vmin=Zmin, vmax=Zmax,
@@ -306,9 +315,14 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     else:
         im = axis.pcolormesh(centerX, centerY, Z, vmin=Zmin, vmax=Zmax,
                              cmap=cmap)
-
-    axis.set_xlim([-extent[0], extent[0]])
-    axis.set_ylim([-extent[1], extent[1]])
+    if getattr(extent[0], '__iter__', None) is not None:
+        axis.set_xlim(*extent[0])
+    else:
+        axis.set_xlim([-extent[0], extent[0]])
+    if getattr(extent[1], '__iter__', None) is not None:
+        axis.set_ylim(*extent[1])
+    else:
+        axis.set_ylim([-extent[1], extent[1]])
 
     #axis.axis([-extent[0], extent[0], -extent[1], extent[1]])
 
@@ -400,12 +414,13 @@ def plot_stars(binDict,
                          cbar_mode=cbarmode,
                          cbar_location='right')
 
-        grid[0].set_xlabel('X [kpc]', fontsize=25)
+        grid[0].set_xlabel('X [kpc]', fontsize=25)#!make variable label after settings
         grid[0].set_ylabel('Y [kpc]', fontsize=25)
-
+        
         im = plot_panel(grid[0], 'Z2', binDict, settings, axes=[0, 1])
 
-        fig.suptitle("t="+str(round(snaptime, 1)) +
+
+        fig.suptitle("t="+str(round(snaptime, 3)) +
                      "Myr", fontsize=25)
 
         cbar = grid.cbar_axes[0].colorbar(im)

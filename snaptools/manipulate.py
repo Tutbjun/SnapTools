@@ -51,7 +51,6 @@ def bin_particles(p1,
             extents2 = extents2_in
             length2 = extents2_in[1] - extents2_in[0]
 
-
     Z2, ind1, ind2 = np.histogram2d(p1, p2, range=[extents1,
                                                    extents2],
                                     weights=mass * 1E10,
@@ -60,7 +59,7 @@ def bin_particles(p1,
     Z2 = Z2 / (length2 / BINS * 1E3 * length1 / BINS * 1E3)
     # Log scale the data
     if scale:
-        Z2[Z2 <= 0] = np.nan
+        Z2[Z2 < 0] = np.nan
         Z2[Z2 > 0] = np.log10(Z2[Z2 > 0])
 
     return Z2, ind1, ind2
