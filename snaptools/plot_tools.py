@@ -737,7 +737,7 @@ def plot_loop_centers(snaps,
 
     return times, bar_dist, disk_dist, bar_offset
 
-def plot_loop_fourier(
+def plot_loop_fourier_2D(
         binSnap,
         outname='./fourierModes.png',
         folder='./',
