@@ -133,7 +133,8 @@ def plot_single(name,
     else:
         raise RuntimeError("Not a valid particle type")
     binSnap = snapshot.Snapshot(fname).bin_snap(settings)
-    return plot_stars(binSnap, outname, settings,smoothen=smoothen)
+    plot_stars(binSnap, outname, settings,smoothen=smoothen)
+    return binSnap, settings
 
 
 def plot_combined(names,
@@ -254,7 +255,8 @@ def plot_combined(names,
     snapPaths = utils.list_snapshots(names, folder, snapbase)
     snaps = []
     for snapPath in snapPaths:
-        snaps.append(snapshot.Snapshot(snapPath).bin_snap(settings))
+        s = snapshot.Snapshot(snapPath)
+        snaps.append(s.bin_snap(settings))
     combinedSnap = snaps[0]
     for snap in snaps[1:]:
         ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
@@ -262,7 +264,8 @@ def plot_combined(names,
             if ZKey in combinedSnap:
                 combinedSnap[ZKey] = combinedSnap[ZKey] + snap[ZKey]
     
-    return plot_stars(combinedSnap, outname, settings,smoothen=smoothen)
+    plot_stars(combinedSnap, outname, settings,smoothen=smoothen)
+    return combinedSnap, settings
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     """
@@ -351,7 +354,10 @@ def plot_stars(binDict,
     scale = settings['log_scale']
     cbarmode = settings['colorbar']
 
-    if smoothen:#!bad implementation, should be more integrated (in settings, functions, etc)
+    #!bad implementation, should be more integrated (in settings, functions, etc)
+    #todo: make smoothen non-optional, but calculated from gridsize to always be optimal
+
+    if smoothen:
         binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=12.0)
 #for mass weighted histogram
 #size in units of scale length
@@ -475,6 +481,7 @@ def plot_stars(binDict,
         plt.savefig(outname, bbox_inches='tight')
         fig.clf()
         plt.close()
+        return
     return fig
 
 
@@ -730,8 +737,72 @@ def plot_loop_centers(snaps,
 
     return times, bar_dist, disk_dist, bar_offset
 
+def plot_loop_fourier(
+        binSnap,
+        outname='./fourierModes.png',
+        folder='./',
+        maxAmp=False,
+        settings=None,
+        axis=None,
+        first_only=False,
+        com=False,
+        parttype='stars'):
+    """
+    Plot the Fourier modes for a range of snapshots.
+    #Wrapper to measure.loop_fourier()
+    """
+    if settings is None:
+        settings = utils.make_settings(first_only=first_only,
+                                       com=com,
+                                       xlen=15,
+                                       ylen=15,
+                                       parttype=parttype,
+                                       filename=folder,
+                                       snapbase='snap_'
+                                       )
+    if axis:
+        ax1 = axis
+    else:
+        plt.clf()
+        fig = plt.figure(1, figsize=(20.0, 20.0))
+        ax1 = fig.add_subplot(111)
+    if not hasattr(modes, '__iter__'):
+        modes = [modes]  
 
-def plot_loop_fourier(snaps,
+    amps = measure.loop_fourier(snaps, modes,
+                                settings,
+                                max_amp=maxAmp)
+
+    amp = np.zeros(len(amps)*len(modes)).reshape(len(amps), len(modes))
+    times = np.zeros(len(amps))
+
+    for i in range(len(amps)):
+        amp[i, :] = amps[i][0]
+        times[i] = amps[i][1]
+
+    for i, m in enumerate(modes):
+        ax1.plot(times, amp[:, i], label="A"+str(m))
+
+    ax1.set_xlabel('Time [Gyr]', fontsize=20)
+    # Only measure one mode
+    if len(modes) == 1:
+        if maxAmp:
+            ax1.set_ylabel('A'+str(modes[0]), fontsize=20)
+        else:
+            ax1.set_ylabel('<A'+str(modes[0])+'>', fontsize=20)
+    else:  # Measure more than one
+        if maxAmp:
+            ax1.set_ylabel('Amp', fontsize=20)
+        else:
+            ax1.set_ylabel('<Amp>', fontsize=20)
+            plt.legend()
+    if not axis:
+        plt.savefig(outname, bbox_inches='tight')
+        fig.clf()
+        plt.close()
+
+
+''' def plot_loop_fourier(snaps,
                       modes,
                       outname='./fourierModes.png',
                       folder='./',
@@ -795,7 +866,7 @@ def plot_loop_fourier(snaps,
     if not axis:
         plt.savefig(outname, bbox_inches='tight')
         fig.clf()
-        plt.close()
+        plt.close() '''
 
 
 def plot_contours(bin_dict,
