@@ -483,6 +483,7 @@ class Snapshot(object):
             bin_dict['Gy'] = gasDict['Z2y']
 
         bin_dict['snaptime'] = head['time']
+        bin_dict['snapredshift'] = head['redshift']
         return bin_dict
 
     def to_cube(self,

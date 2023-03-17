@@ -45,6 +45,7 @@ def make_settings(**kwargs):
                 'xlen': 30,
                 'ylen': 30,
                 'zlen': 30,
+                'len2kpc': 1,
                 'colorbar': 'None',
                 'NBINS': 512,
                 'gadgetGridsize': 128,

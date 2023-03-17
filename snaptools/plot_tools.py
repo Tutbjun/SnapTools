@@ -49,6 +49,7 @@ def plot_single(name,
                 xlen=20,
                 ylen=20,
                 zlen=20,
+                len2kpc=1,
                 colorbar=None,
                 parttype='stars',
                 NBINS=512,
@@ -103,7 +104,8 @@ def plot_single(name,
                                        plotPotMin = plotPotMin,
                                        xlen = xlen,
                                        ylen = ylen,
-                                       zlen = zlen)
+                                       zlen = zlen,
+                                       len2kpc = len2kpc)
 
 
     settings['colormap'] = colormap
@@ -154,6 +156,7 @@ def plot_combined(names,
               xlen=20,
               ylen=20,
               zlen=20,
+              len2kpc=1,
               colorbar=None,
               parttype='stars',
               NBINS=512,
@@ -222,6 +225,7 @@ def plot_combined(names,
                                        xlen=xlen,
                                        ylen=ylen,
                                        zlen=zlen,
+                                       len2kpc=len2kpc,
                                        colorbar=colorbar,
                                        NBINS=NBINS,
                                        gadgetGridsize=gadgetGridsize)
@@ -295,6 +299,7 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
 
     Zmin = settings['in_min']
     Zmax = settings['in_max']
+    len2kpc = settings['len2kpc']
     plotCompanionCOM = settings['plotCompanionCOM']
     cmap = settings['colormap']
     extent = [settings['xlen'], settings['ylen'], settings['zlen']]
@@ -325,12 +330,13 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     else:
         im = axis.pcolormesh(centerX, centerY, Z, vmin=Zmin, vmax=Zmax,
                              cmap=cmap)
+    extent = np.array(extent)*len2kpc
     if getattr(extent[0], '__iter__', None) is not None:
-        axis.set_xlim(*extent[0])
+        axis.set_xlim(*(extent[0]))
     else:
         axis.set_xlim([-extent[0], extent[0]])
     if getattr(extent[1], '__iter__', None) is not None:
-        axis.set_ylim(*extent[1])
+        axis.set_ylim(*(extent[1]))
     else:
         axis.set_ylim([-extent[1], extent[1]])
 
@@ -355,6 +361,9 @@ def plot_stars(binDict,
     panels = settings['panel_mode']
     scale = settings['log_scale']
     cbarmode = settings['colorbar']
+    len2kpc = settings['len2kpc']
+    binDict['Z2x'] = binDict['Z2x']*len2kpc
+    binDict['Z2y'] = binDict['Z2y']*len2kpc
 
     gadgetGrid = settings['gadgetGridsize']
     NBINS = settings['NBINS']
@@ -363,10 +372,11 @@ def plot_stars(binDict,
         binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=desiredSigma)
 #for mass weighted histogram
 #size in units of scale length
+    snaptime = binDict['snaptime']
+    snapredshift = binDict['snapredshift']
 
     if panels == "starsgas":
         #Want to plot stars next to gas
-        snaptime = binDict['snaptime']
 
         fig, (ax1, ax2) = plt.subplots(1, 2,
                                        figsize=(20.0, 10.0),
@@ -389,12 +399,9 @@ def plot_stars(binDict,
                      textcoords='axes fraction',
                      xytext=(.5, .8), fontsize='larger')
 
-        fig.suptitle("t="+str(round(snaptime, 1)) +
-                     "Myr", fontsize=25)
 
     if panels == "three":
         #Want all perspectives
-        snaptime = binDict['snaptime']
 
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3,
                                             figsize=(15.0, 5.0))
@@ -414,12 +421,9 @@ def plot_stars(binDict,
         ax3.set_xlabel('Y [kpc]', fontsize=15)
         ax3.set_ylabel('Z [kpc]', fontsize=15)
 
-        fig.suptitle("t="+str(round(snaptime, 1)) +
-                     "Myr", fontsize=25)
 
     if panels == "xy":
       # Single panel
-        snaptime = binDict['snaptime']
 
         fig = plt.figure(1, figsize=(20.0, 10.0))
         grid = ImageGrid(fig, 111,  # similar to subplot(111)
@@ -435,8 +439,6 @@ def plot_stars(binDict,
         im = plot_panel(grid[0], 'Z2', binDict, settings, axes=[0, 1])
 
 
-        fig.suptitle("t="+str(round(snaptime, 3)) +
-                     "Myr", fontsize=25)
 
         cbar = grid.cbar_axes[0].colorbar(im)
         if scale:
@@ -446,7 +448,6 @@ def plot_stars(binDict,
 
     if panels == "small":
       # Smaller edge-on panels next to a face-on panel
-        snaptime = binDict['snaptime']
 
         fig = plt.figure(1, figsize=(20.0, 10.0))
         ax1 = fig.add_subplot(111)
@@ -475,9 +476,11 @@ def plot_stars(binDict,
        # ax_y.set_xlabel('Y [kpc]', fontsize=25)
         ax_y.get_yaxis().set_visible(False)
         ax_y.set_xlabel('Z [kpc]', fontsize=25)
-
-        fig.suptitle("t="+str(round(snaptime, 1)) +
-                     "Myr", fontsize=25)
+    titleType = 'redshift'
+    if titleType == 'redshift':
+        fig.suptitle("z="+str(round(snapredshift, -int(np.log10(snapredshift))+3)), fontsize=25)
+    elif titleType == 'time':
+        fig.suptitle("t="+str(round(snaptime, -int(np.log10(snaptime))+3)) + "Myr", fontsize=25)
 
     if not returnOnly:
         plt.savefig(outname, bbox_inches='tight')
