@@ -52,7 +52,8 @@ def plot_single(name,
                 colorbar=None,
                 parttype='stars',
                 NBINS=512,
-                smoothen=True):
+                gadgetGridsize=128
+                ):
     """
     Plot a single snapshot
     Kwargs:
@@ -133,7 +134,7 @@ def plot_single(name,
     else:
         raise RuntimeError("Not a valid particle type")
     binSnap = snapshot.Snapshot(fname).bin_snap(settings)
-    plot_stars(binSnap, outname, settings,smoothen=smoothen)
+    plot_stars(binSnap, outname, settings)
     return binSnap, settings
 
 
@@ -157,7 +158,8 @@ def plot_combined(names,
               parttype='stars',
               NBINS=512,
               snapbase="snap_",
-              smoothen=True):
+              gadgetGridsize=128
+              ):
     """
     Plot a range of snapshots
     Args:
@@ -221,7 +223,8 @@ def plot_combined(names,
                                        ylen=ylen,
                                        zlen=zlen,
                                        colorbar=colorbar,
-                                       NBINS=NBINS)
+                                       NBINS=NBINS,
+                                       gadgetGridsize=gadgetGridsize)
 
     settings['colormap'] = colormap
 
@@ -264,7 +267,7 @@ def plot_combined(names,
             if ZKey in combinedSnap:
                 combinedSnap[ZKey] = combinedSnap[ZKey] + snap[ZKey]
     
-    plot_stars(combinedSnap, outname, settings,smoothen=smoothen)
+    plot_stars(combinedSnap, outname, settings)
     return combinedSnap, settings
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
@@ -345,8 +348,7 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
 def plot_stars(binDict,
                outname,
                settings,
-               returnOnly=False,
-               smoothen=False):
+               returnOnly=False):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # Get the settings
@@ -354,11 +356,11 @@ def plot_stars(binDict,
     scale = settings['log_scale']
     cbarmode = settings['colorbar']
 
-    #!bad implementation, should be more integrated (in settings, functions, etc)
-    #todo: make smoothen non-optional, but calculated from gridsize to always be optimal
-
-    if smoothen:
-        binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=12.0)
+    gadgetGrid = settings['gadgetGridsize']
+    NBINS = settings['NBINS']
+    desiredSigma = NBINS/gadgetGrid/1.3
+    if desiredSigma > 0.5:
+        binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=desiredSigma)
 #for mass weighted histogram
 #size in units of scale length
 

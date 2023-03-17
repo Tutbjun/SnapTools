@@ -47,6 +47,7 @@ def make_settings(**kwargs):
                 'zlen': 30,
                 'colorbar': 'None',
                 'NBINS': 512,
+                'gadgetGridsize': 128,
                 'plotCompanionCOM': False,
                 'plotPotMin': False,
                 'parttype': 'stars',
