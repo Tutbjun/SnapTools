@@ -206,7 +206,7 @@ def plot_combined(names,
     output_dir = os.path.join(folder, "plot")
     snapbase = names[0]
     fname = os.path.join(base, snapbase)
-    outname = os.path.join(output_dir, name[0] + ".png")
+    outname = os.path.join(output_dir, name + ".png")
     osPathSep = os.path.sep
     p = ""
     for f in outname.split(osPathSep)[:-1]:
