@@ -17,6 +17,7 @@ try:
     import cupy as cp
     usingGPU = True
 except:
+    print("Cupy not found, using CPU")
     from scipy.ndimage.filters import gaussian_filter as gf
     usingGPU = False
 today = datetime.date.today().strftime('%b%d')
