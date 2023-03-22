@@ -12,7 +12,13 @@ from multiprocess import Pool
 import itertools
 import datetime
 import os
-from scipy.ndimage.filters import gaussian_filter
+try:
+    from cupyx.scipy.ndimage import gaussian_filter as gf
+    import cupy as cp
+    usingGPU = True
+except:
+    from scipy.ndimage.filters import gaussian_filter as gf
+    usingGPU = False
 today = datetime.date.today().strftime('%b%d')
 
 
@@ -260,17 +266,16 @@ def plot_combined(names,
 
     # Turn list of snapnumbers into names if not already
     snapPaths = utils.list_snapshots(names, folder, snapbase)
-    snaps = []
-    for snapPath in snapPaths:
-        s = snapshot.Snapshot(snapPath)
-        snaps.append(s.bin_snap(settings))
-    combinedSnap = snaps[0]
-    for snap in snaps[1:]:
-        ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
+    ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
+    combinedSnap = snapshot.Snapshot(snapPaths[0]).bin_snap(settings)
+    for snapPath in snapPaths[1:]:
+        s = snapshot.Snapshot(snapPath).bin_snap(settings)
         for ZKey in ZKeys:
             if ZKey in combinedSnap:
-                combinedSnap[ZKey] = combinedSnap[ZKey] + snap[ZKey]
-    
+                combinedSnap[ZKey] = combinedSnap[ZKey] + s[ZKey]
+    combinedSnap['Z2'] = combinedSnap['Z2']
+    if len(snapPaths) > 1:
+        del s
     plot_stars(combinedSnap, outname, settings)
     return combinedSnap, settings
 
@@ -350,6 +355,17 @@ def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
 
     return im
 
+def gaussian_filter(data, sigma=1.0):
+    if usingGPU:
+        data = cp.asarray(data)
+    var = None
+    if data.dtype == np.float16:
+        var = gf(data.astype(np.float32), sigma=sigma).astype(np.float16)
+    else:
+        var = gf(data, sigma=sigma)
+    if usingGPU:
+        var = cp.asnumpy(var)
+    return var
 
 def plot_stars(binDict,
                outname,
@@ -436,7 +452,7 @@ def plot_stars(binDict,
         grid[0].set_xlabel('X [kpc]', fontsize=25)#!make variable label after settings
         grid[0].set_ylabel('Y [kpc]', fontsize=25)
         
-        im = plot_panel(grid[0], 'Z2', binDict, settings, axes=[0, 1])
+        im = plot_panel(grid[0], 'Z2', binDict, settings, axes=[0, 1])#!!long exec time
 
 
 
@@ -510,7 +526,7 @@ def plot_multi_ring_offsets(snaps,
             snap_ids = range(0, snaps+1)
         elif len(snaps) == 2:
             snap_ids = range(snaps[0], snaps[1]+1)
-        elif len(snap) == 3:
+        elif len(snaps) == 3:
             snap_ids = range(snaps[0], snaps[1]+1, snaps[2])
         else:
             snap_ids = snaps
