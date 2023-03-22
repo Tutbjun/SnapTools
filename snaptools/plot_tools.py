@@ -13,10 +13,13 @@ import itertools
 import datetime
 import os
 try:
+    import cupyx as cpx
+    print(cpx.get_runtime_info())
     from cupyx.scipy.ndimage import gaussian_filter as gf
     import cupy as cp
     usingGPU = True
-except:
+except Exception as e: 
+    print(e)
     print("Cupy not found, using CPU")
     from scipy.ndimage.filters import gaussian_filter as gf
     usingGPU = False
