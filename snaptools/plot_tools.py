@@ -1,6 +1,9 @@
 import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as plt
+from scipy.fft import fftn
+import seaborn as sns
+import scipy.stats as stats
 import numpy as np
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -40,6 +43,10 @@ def path2OsPath(path):
         if "\\" in path:
             path = path.replace("\\", osPathSep)
     return path
+
+
+
+
 
 def plot_single(name,
                 settings=None,
@@ -1021,3 +1028,44 @@ def plot_orbit(sims, names, styles=['-'],
         plt.savefig(output+'orbits.pdf', dpi=600)
         plt.clf()
         plt.close()
+
+def plot_powerspec(snaps,
+                   outname='',
+                   SIMSIZE=1000, #kpc 
+                   NBINS=1000,
+                   gadgetGridsize=128,
+                   tre_D=True,
+                   outfolder='/home/pardy/plots/'):
+    d=plot_combined(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+
+    y=fftn(d[0]['Z2']-np.mean(d[0]['Z2']))
+    pix=np.shape(y)[0]
+    y=np.abs(y)**2
+    kfreq = np.fft.fftfreq(pix) * pix
+    if tre_D:
+        kfreq3D = np.meshgrid(kfreq, kfreq, kfreq)
+        knrm = np.sqrt(kfreq3D[0]**2 + kfreq3D[1]**2 + kfreq3D[2]**2)
+    else:
+        kfreq2D = np.meshgrid(kfreq, kfreq)
+        knrm = np.sqrt(kfreq2D[0]**2 + kfreq2D[1]**2)
+
+
+
+    knrm = knrm.flatten()
+    y = y.flatten()
+    kbins = np.arange(0.5, pix//2+1, 1.)
+    kvals = 0.5 * (kbins[1:] + kbins[:-1])
+    Abins, _, _ = stats.binned_statistic(knrm, y,
+                                    statistic = "mean",
+                                    bins = kbins)
+    if tre_D:
+        Abins *= 4. * np.pi / 3. * (kbins[1:]**3 - kbins[:-1]**3)
+    else:
+        Abins *= 2. * np.pi * (kbins[1:]**2 - kbins[:-1]**2)
+    plt.loglog(kvals, Abins)
+    plt.xlabel("$k$")
+    plt.ylabel("$P(k)$")
+    plt.tight_layout()
+    plt.savefig(outfolder+outname+today+'.png',
+                bbox_inches='tight')
+    plt.close()
