@@ -277,18 +277,146 @@ def plot_combined(names,
 
     # Turn list of snapnumbers into names if not already
     snapPaths = utils.list_snapshots(names, folder, snapbase)
-    ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
     combinedSnap = snapshot.Snapshot(snapPaths[0]).bin_snap(settings, doLog=False)
     for snapPath in snapPaths[1:]:
         s = snapshot.Snapshot(snapPath).bin_snap(settings, doLog=False)
-        for ZKey in ZKeys:
-            if ZKey in combinedSnap:
-                combinedSnap[ZKey] = combinedSnap[ZKey] + s[ZKey]
-    combinedSnap['Z2'] = combinedSnap['Z2']
+        combinedSnap['Z2'] = combinedSnap['Z2'] + s['Z2']
     if len(snapPaths) > 1:
         del s
     plot_stars(combinedSnap, outname, settings, doLog=True)
     return combinedSnap, settings
+
+def plot_combined_3D(names,
+                settings=None,
+                folder="./",
+                base="./",
+                panel_mode="xy",
+                log_scale=True,
+                in_min=-1,
+                in_max=None,
+                com=False,
+                gal_num=-1,
+                first_only=False,
+                plotCompanionCOM=False,
+                colormap='viridis',
+                xlen=20,
+                ylen=20,
+                zlen=20,
+                len2kpc=1,
+                colorbar=None,
+                parttype='stars',
+                NBINS=512,
+                snapbase="snap_",
+                gadgetGridsize=128,
+                visualize=True
+                ):
+    """
+    Plot a range of snapshots
+    Args:
+      snaps: The snapshots you want to plot
+      If argument is a integer than take a range from zero to arg.
+      Else if arg. is a tuple, list, or numpy array then:
+        1 element: range(0, snaps)
+        2 elements: range(snaps[0], snaps[1])
+        3 elements: range(snaps[0], snaps[1], snaps[2])
+        NOTE: The last snapshot is added to make these inclusive lists
+        more than 3 elements: use snaps
+        See utils.list_snapshots() for more info
+
+    Kwargs:
+      settings: settings dictionary (see utils.make_settings())
+      name: Snapshot name
+      folder:  where the snapshots are
+      output_dir: output directory
+      panel_mode: Project that you want
+          xy=plot only xy (default)
+          three=plot three panel
+          small=plot small three panel
+      log_scale: log scale of density
+      in_min: Minimum for colormap
+      in_max: Maximum for colormap
+      com: Offset by disk center of mass?
+      first_only: Only plot the first galaxy
+      colormap: ame of colorblind safe color map (CBcm.py)
+                          or standard matplotlib colormap
+      xlen: Gives x length (in kpc)
+      ylen: Gives y length (in kpc)
+      zlen: Gives z length (in kpc)
+      colorbar: Colorbar mode (None (Default), Single... )
+      parttype: particle type (Gas, Halo, Stars...)
+    """
+    import re
+    name = path2OsPath(names[0])
+    folder = path2OsPath(folder)
+    base = path2OsPath(base)
+    
+    output_dir = os.path.join(folder, "plot")
+    snapbase = names[0]
+    fname = os.path.join(base, snapbase)
+    outname = os.path.join(output_dir, name + ".png")
+    osPathSep = os.path.sep
+    p = ""
+    for f in outname.split(osPathSep)[:-1]:
+        p = os.path.join(p, f)
+        os.makedirs(p, exist_ok=True)
+
+    if settings is None:
+        settings = utils.make_settings(panel_mode=panel_mode,
+                                       log_scale=log_scale,
+                                       in_min=in_min,
+                                       in_max=in_max,
+                                       com=com,
+                                       first_only=first_only,
+                                       gal_num=gal_num,
+                                       plotCompanionCOM=plotCompanionCOM,
+                                       xlen=xlen,
+                                       ylen=ylen,
+                                       zlen=zlen,
+                                       len2kpc=len2kpc,
+                                       colorbar=colorbar,
+                                       NBINS=NBINS,
+                                       gadgetGridsize=gadgetGridsize)
+
+    settings['colormap'] = colormap
+
+    settings['colorbar'] = colorbar
+    settings['NBINS'] = NBINS
+
+    part_names = ['gas',
+                  'halo',
+                  'stars',
+                  'bulge',
+                  'sfr',
+                  'other']
+
+    if ((getattr(parttype, '__iter__', None) is not None) and  # add additional check due to python3
+            (not isinstance(parttype, (str, bytes)))):
+        raise RuntimeError("Must choose one particle type")
+
+    elif isinstance(parttype, int):
+        if parttype > -1:
+            settings['parttype'] = part_names[parttype]
+        else:
+            raise RuntimeError("Must choose one particle type")
+
+    elif isinstance(parttype, str):
+        if parttype in part_names:
+            settings['parttype'] = parttype
+    else:
+        raise RuntimeError("Not a valid particle type")
+
+    # Turn list of snapnumbers into names if not already
+    snapPaths = utils.list_snapshots(names, folder, snapbase)
+    combinedSnap = snapshot.Snapshot(snapPaths[0]).bin_snap_3D(settings, doLog=False)
+    for snapPath in snapPaths[1:]:
+        s = snapshot.Snapshot(snapPath).bin_snap_3D(settings, doLog=False)
+        combinedSnap['Z2'] = combinedSnap['Z2'] + s['Z2']
+    if len(snapPaths) > 1:
+        del s
+    if visualize:
+        plot_stars_3D(combinedSnap, outname, settings, doLog=True)
+    return combinedSnap, settings
+
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
     """
@@ -518,6 +646,245 @@ def plot_stars(binDict,
         fig.clf()
         plt.close()
         return
+    return fig
+
+def plot_stars_3D(binDict,
+               outname,
+               settings,
+               frames=100,
+               animTime=10,
+               returnOnly=False,
+               doLog=False):
+    #from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    if doLog:
+        binDict['Z2'][binDict['Z2'] <= 0] = np.nan
+        binDict['Z2'] = np.log10(binDict['Z2'])
+    # Get the settings
+    panels = settings['panel_mode']
+    if panels == "xy":
+        panels = "xyz"
+    scale = settings['log_scale']
+    cbarmode = settings['colorbar']
+    len2kpc = settings['len2kpc']
+    binDict['Z2x'] = binDict['Z2x']*len2kpc
+    binDict['Z2y'] = binDict['Z2y']*len2kpc
+    binDict['Z2z'] = binDict['Z2z']*len2kpc
+
+    gadgetGrid = settings['gadgetGridsize']
+    NBINS = settings['NBINS']
+    desiredSigma = NBINS/gadgetGrid/1.3
+    if desiredSigma > 0.5:
+        binDict['Z2'] = gaussian_filter(binDict['Z2'], sigma=desiredSigma)
+    #for mass weighted histogram
+    #size in units of scale length
+    snaptime = binDict['snaptime']
+    snapredshift = binDict['snapredshift']
+
+    if panels == "starsgas":
+        raise NotImplementedError("3D plotting not implemented for stars and gas")
+        #Want to plot stars next to gas
+
+        fig, (ax1, ax2) = plt.subplots(1, 2,
+                                       figsize=(20.0, 10.0),
+                                       sharey=True)
+
+        plot_panel(ax1, 'Z2', binDict, settings, axes=[0, 1])
+
+        ax1.set_xlabel('X [kpc]', fontsize=25)
+        ax1.set_ylabel('Y [kpc]', fontsize=25)
+
+        ax1.annotate('Stars', xy=(.5, .8), xycoords='axes fraction',
+                     textcoords='axes fraction',
+                     xytext=(.5, .8), fontsize='larger')
+
+        plot_panel(ax2, 'G', binDict,  settings, axes=[0, 1])
+
+        ax2.set_xlabel('X [kpc]', fontsize=25)
+
+        ax2.annotate('Gas', xy=(.5, .8), xycoords='axes fraction',
+                     textcoords='axes fraction',
+                     xytext=(.5, .8), fontsize='larger')
+
+
+    if panels == "three":
+        raise NotImplementedError("3D plotting not implemented for three panels")
+        #Want all perspectives
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3,
+                                            figsize=(15.0, 5.0))
+
+        im = plot_panel(ax1, 'Z2', binDict, settings, axes=[0, 1])
+
+        ax1.set_xlabel('X [kpc]', fontsize=15)
+        ax1.set_ylabel('Y [kpc]', fontsize=15)
+
+        im = plot_panel(ax2, 'H', binDict,  settings, axes=[0, 2])
+
+        ax2.set_xlabel('X [kpc]', fontsize=15)
+        ax2.set_ylabel('Z [kpc]', fontsize=15)
+
+        im = plot_panel(ax3, 'H2', binDict,  settings, axes=[1, 2])
+
+        ax3.set_xlabel('Y [kpc]', fontsize=15)
+        ax3.set_ylabel('Z [kpc]', fontsize=15)
+
+
+    if panels == "xyz":
+      # Single panel
+        import plotly.graph_objects as go
+        volume = binDict['Z2']
+        if frames > NBINS:
+            frames = NBINS
+        frame2bin = lambda frame: frame * (NBINS-1) // (frames-1)
+        r, c = volume[0].shape
+        startFrame = (len(volume)-1)//2
+        # Plot volume
+        X = np.linspace(binDict['Z2x'][0], binDict['Z2x'][-1], c)
+        Y = np.linspace(binDict['Z2y'][0], binDict['Z2y'][-1], r)
+        fig = go.Figure(frames=[go.Frame(data=go.Surface(
+            z=(binDict['Z2z'][-1] - frame2bin(k) * binDict['Z2z'][-1]/(NBINS-1)) * np.ones((r, c)),
+            surfacecolor=np.flipud(volume[frame2bin(k)]),
+            cmin=np.min(volume), cmax=np.max(volume),
+            x=X, y=Y # associate x and y coordinates with this surface
+            ),
+            name=str(k) # you need to name the frame for the animation to behave properly
+            )
+            for k in range(frames)])
+        
+        # Add data to be displayed before animation starts
+        fig.add_trace(go.Surface(
+            z=(binDict['Z2z'][-1] - frame2bin(startFrame//2) * binDict['Z2z'][-1]/(NBINS-1)) * np.ones((r, c)),
+            surfacecolor=np.flipud(volume[frame2bin(startFrame)]),
+            colorscale='plasma',
+            cmin=np.min(volume), cmax=np.max(volume),
+            colorbar=dict(thickness=20, ticklen=4),
+            x=X, y=Y # associate x and y coordinates with this surface
+            ))
+        
+        def frame_args(duration):
+            return {
+                "frame": {"duration": duration},
+                "mode": "immediate",
+                "fromcurrent": True,
+                "transition": {"duration": duration, "easing": "linear"},
+            }
+        
+        sliders = [
+                    {
+                        "pad": {"b": 10, "t": 60},
+                        "len": 0.9,
+                        "x": 0.1,
+                        "y": 0,
+                        "steps": [
+                            {
+                                "args": [[f.name], frame_args(0)],
+                                "label": str(k),
+                                "method": "animate",
+                            }
+                            for k, f in enumerate(fig.frames)
+                        ],
+                    }
+                ]
+        # Layout
+        fig.update_layout(
+                title='Slices in volumetric data',
+                width=600,
+                height=600,
+                scene=dict(
+                            zaxis=dict(range=[binDict['Z2z'][0]-1,binDict['Z2z'][-1]+1], autorange=False),
+                            xaxis=dict(range=[binDict['Z2x'][0],binDict['Z2x'][-1]], autorange=False),
+                            yaxis=dict(range=[binDict['Z2y'][0],binDict['Z2y'][-1]], autorange=False),
+                            aspectratio=dict(x=1, y=1, z=1),
+                            ),
+                updatemenus = [
+                    {
+                        "buttons": [
+                            {
+                                "args": [None, frame_args(50)],
+                                "label": "&#9654;", # play symbol
+                                "method": "animate",
+                            },
+                            {
+                                "args": [[None], frame_args(0)],
+                                "label": "&#9724;", # pause symbol
+                                "method": "animate",
+                            },
+                        ],
+                        "direction": "left",
+                        "pad": {"r": 10, "t": 70},
+                        "type": "buttons",
+                        "x": 0.1,
+                        "y": 0,
+                    }
+                ],
+                sliders=sliders
+        )
+        fig.show()
+
+        """fig = plt.figure(1, figsize=(20.0, 10.0))
+        grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                         nrows_ncols=(1, 1),
+                         label_mode='L',
+                         cbar_pad=0.05,
+                         cbar_mode=cbarmode,
+                         cbar_location='right')
+
+        grid[0].set_xlabel('X [kpc]', fontsize=25)#!make variable label after settings
+        grid[0].set_ylabel('Y [kpc]', fontsize=25)
+        
+        im = plot_panel(grid[0], 'Z2', binDict, settings, axes=[0, 1])#!!long exec time
+
+
+
+        cbar = grid.cbar_axes[0].colorbar(im)
+        if scale:
+            cbar.set_label('Log[M$_{\odot}$ pc$^{-2}$]')
+        else:
+            cbar.set_label('M$_{\odot}$ pc$^{-2}$')"""
+
+    if panels == "small":
+        raise NotImplementedError("3D plotting not implemented for small panels")
+      # Smaller edge-on panels next to a face-on panel
+
+        fig = plt.figure(1, figsize=(20.0, 10.0))
+        ax1 = fig.add_subplot(111)
+
+        im = plot_panel(ax1, 'Z2', binDict,  settings, axes=[0, 1])
+
+        ax1.set_xlabel('X [kpc]', fontsize=25)
+        ax1.set_ylabel('Y [kpc]', fontsize=25)
+        ax1.set_aspect(1.)
+        divider = make_axes_locatable(ax1)
+        ax_x = divider.append_axes("top", size=1.2, pad=0.1, sharex=ax1)
+        ax_y = divider.append_axes("right", size=1.2, pad=0.1, sharey=ax1)
+
+        settings_x = settings
+        settings_x['plotCompanionCOM'] = False
+        binDict['H'] = binDict['H'].T
+        im = plot_panel(ax_x, 'H', binDict, settings_x, axes=[0, 2])
+
+       # ax_x.axis([-lengthX,lengthX,-lengthZ,lengthZ])
+        #ax_x.set_xlabel('X [kpc]', fontsize=25)
+        ax_x.get_xaxis().set_visible(False)
+        ax_x.set_ylabel('Z [kpc]', fontsize=25)
+        im = plot_panel(ax_y, 'H2', binDict,  settings_x, axes=[1, 2])
+
+     #   ax_y.axis([-lengthY,lengthY,-lengthZ,lengthZ])
+       # ax_y.set_xlabel('Y [kpc]', fontsize=25)
+        ax_y.get_yaxis().set_visible(False)
+        ax_y.set_xlabel('Z [kpc]', fontsize=25)
+    """titleType = 'redshift'
+    if titleType == 'redshift':
+        fig.suptitle("z="+str(round(snapredshift, -int(np.log10(snapredshift))+3)), fontsize=25)
+    elif titleType == 'time':
+        fig.suptitle("t="+str(round(snaptime, -int(np.log10(snaptime))+3)) + "Myr", fontsize=25)"""
+
+    """if not returnOnly:
+        plt.savefig(outname, bbox_inches='tight')
+        fig.clf()
+        plt.close()
+        return"""
     return fig
 
 

@@ -483,6 +483,130 @@ class Snapshot(object):
         bin_dict['snaptime'] = head['time']
         bin_dict['snapredshift'] = head['redshift']
         return bin_dict
+    
+    def bin_snap_3D(self, settings=None, doLog=True):
+        """
+        Create 3D density projection of snapshot in one or more projections.
+
+        kwargs:
+            settings: settings dictionary
+                    if None then use self.settings
+        """
+
+        if settings is None:
+            settings = self.settings
+
+        bin_dict = {}
+        lengthX = settings['xlen']
+        lengthY = settings['ylen']
+        lengthZ = settings['zlen']
+        BINS = settings['NBINS']
+        ptype = settings['parttype']
+        panels = settings['panel_mode']
+        head = self.header
+        if ptype not in self.part_names:
+            raise ValueError('Invalid parttype: %s' % ptype + '. Part not present in snapshot')
+        if ((getattr(ptype, '__iter__', None) is not None) and  # add additional check due to python3
+            (not isinstance(ptype, (str, bytes)))):
+            pos = np.append(*[self.pos[k] for k in ptype], axis=0)
+            mass = np.append(*[self.masses[k] for k in ptype])
+        else:
+            pos = self.pos[ptype]
+            mass = self.masses[ptype]
+
+    #size in units of scale length
+        if settings['com'] or (settings['gal_num'] > -1):
+            indices = self.split_galaxies(ptype, mass_list=None)
+
+        # User supplied offsets
+        if any(settings['offset']):
+            x_cent, y_cent, z_cent = settings['offset']
+        # Offset from com of ptype
+        elif settings['com']:
+            if settings['gal_num'] < 0:
+                x_cent, y_cent, z_cent = self.measure_com(ptype, indices[0])
+            else:
+                x_cent, y_cent, z_cent = self.measure_com(ptype, indices[settings['gal_num']])
+        # Don't offset
+        else:
+            x_cent = y_cent = z_cent = 0
+
+        if settings['first_only'] or (settings['gal_num'] > -1):
+            mass = mass[indices[settings['gal_num']]]
+            px = (pos[indices[settings['gal_num']], 0] - x_cent).T
+            py = (pos[indices[settings['gal_num']], 1] - y_cent).T
+            pz = (pos[indices[settings['gal_num']], 2] - z_cent).T
+        else:
+            px = pos[:, 0] - x_cent
+            py = pos[:, 1] - y_cent
+            pz = pos[:, 2] - z_cent
+
+        if settings['plotCompanionCOM']:
+            #currently only records second galaxy
+            if not (settings['com'] or (settings['gal_num'] > -1)):
+                indices = self.split_galaxies(ptype, mass_list=None)
+
+            #currently will plot gal_num + 1, but change this
+
+            bin_dict['companionCOM'] = [np.mean(pos[indices[settings['gal_num'] + 1], 0]
+                                                - x_cent),
+                                        np.mean(pos[indices[settings['gal_num'] + 1], 1]
+                                                - y_cent),
+                                        np.mean(pos[indices[settings['gal_num'] + 1], 2]
+                                                - z_cent)]
+
+
+        # All panelmodes need this perspective
+        binArray = np.linspace(lengthZ[0], lengthZ[1], BINS+1)
+        inds = np.digitize(pz, binArray)
+        pz_binned = [[] for i in range(BINS)]
+        py_binned = [[] for i in range(BINS)]
+        px_binned = [[] for i in range(BINS)]
+        mass_binned = [[] for i in range(BINS)]
+        binTransfer = [np.where(inds == i)[0] for i in range(1, BINS+1)]
+        #result variables
+        Z2 = np.zeros((BINS, BINS, BINS))
+        for i in range(BINS):
+            pz_binned[i] = pz[binTransfer[i]]
+            py_binned[i] = py[binTransfer[i]]
+            px_binned[i] = px[binTransfer[i]]
+            mass_binned[i] = mass[binTransfer[i]]
+            Z2[i], x, y = man.bin_particles(px_binned[i], py_binned[i], lengthX,
+                                        lengthY, mass_binned[i], BINS, doLog)
+        bin_dict['Z2'] = Z2
+        bin_dict['Z2x'] = x
+        bin_dict['Z2y'] = y
+        bin_dict['Z2z'] = binArray
+
+        # Need other perspectives
+        if (panels == "three") or (panels == "small"):
+            raise NotImplementedError("3D binning not implemented for 3-panel mode")
+            H, x, z = man.bin_particles(px, pz, lengthX,
+                                        lengthZ, mass, BINS, scale)
+            bin_dict['H'] = H
+            bin_dict['Hx'] = x
+            bin_dict['Hy'] = z
+            H2, y, z = man.bin_particles(py, pz, lengthY,
+                                         lengthZ, mass, BINS, scale)
+            bin_dict['H2'] = H2
+            bin_dict['H2x'] = y
+            bin_dict['H2y'] = z
+
+        if (panels == "starsgas") and (ptype != 'gas'):
+            raise NotImplementedError("3D binning not implemented for 3-panel mode")
+            # Need both stars and gas
+            # call this again with different parttype
+            settings_copy = copy.deepcopy(settings)
+            settings_copy['parttype'] = 'gas'
+            settings_copy['panel_mode'] = 'xy'
+            gasDict = self.bin_snap(settings_copy)
+            bin_dict['G'] = gasDict['Z2']
+            bin_dict['Gx'] = gasDict['Z2x']
+            bin_dict['Gy'] = gasDict['Z2y']
+
+        bin_dict['snaptime'] = head['time']
+        bin_dict['snapredshift'] = head['redshift']
+        return bin_dict
 
     def to_cube(self,
                 filename='snap',
