@@ -146,7 +146,7 @@ class SnapLazy(Snapshot):
                 wmass, = np.where(self.header['massarr'])
                 for i in wmass:
                     part = self.part_names[i]
-                    npart = self.header['nall'][i]
+                    npart = self.header['npart'][i]#!changed from nall
                     mass = self.header['massarr'][i]
                     if 'masses' not in self.__dict__.keys():
                         self.__dict__['masses'] = lazydict.MutableLazyDictionary()
