@@ -502,8 +502,11 @@ def gaussian_filter(data, sigma=1.0):
         var = gf(data.astype(np.float32), sigma=sigma).astype(np.float16)
     else:
         var = gf(data, sigma=sigma)
+    del data
     if usingGPU:
-        var = cp.asnumpy(var)
+        var_ = cp.asnumpy(var)
+        del var
+        return var_
     return var
 
 def plot_stars(binDict,
@@ -738,7 +741,7 @@ def plot_stars_3D(binDict,
             frames = NBINS
         frame2bin = lambda frame: frame * (NBINS-1) // (frames-1)
         r, c = volume[0].shape
-        startFrame = (len(volume)-1)//2
+        startFrame = (frames)//2
         # Plot volume
         X = np.linspace(binDict['Z2x'][0], binDict['Z2x'][-1], c)
         Y = np.linspace(binDict['Z2y'][0], binDict['Z2y'][-1], r)
@@ -1407,7 +1410,7 @@ def plot_powerspec(snaps,
                    gadgetGridsize=128,
                    tre_D=True,
                    outfolder='/home/pardy/plots/'):
-    d=plot_combined(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+    d=plot_combined_3D(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),zlen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
 
     y=fftn(d[0]['Z2']-np.mean(d[0]['Z2']))
     pix=np.shape(y)[0]
