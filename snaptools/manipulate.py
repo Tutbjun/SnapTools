@@ -15,7 +15,7 @@ def bin_particles(p1,
                   extents2_in,
                   mass,
                   BINS,
-                  scale):
+                  scale=False):
     """
     Given a list of coordinates in 2D, return the binned map
 

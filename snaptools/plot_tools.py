@@ -152,8 +152,8 @@ def plot_single(name,
             settings['parttype'] = parttype
     else:
         raise RuntimeError("Not a valid particle type")
-    binSnap = snapshot.Snapshot(fname).bin_snap(settings)
-    plot_stars(binSnap, outname, settings)
+    binSnap = snapshot.Snapshot(fname).bin_snap(settings, doLog=False)
+    plot_stars(binSnap, outname, settings, doLog=True)
     return binSnap, settings
 
 
@@ -278,16 +278,16 @@ def plot_combined(names,
     # Turn list of snapnumbers into names if not already
     snapPaths = utils.list_snapshots(names, folder, snapbase)
     ZKeys = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10']
-    combinedSnap = snapshot.Snapshot(snapPaths[0]).bin_snap(settings)
+    combinedSnap = snapshot.Snapshot(snapPaths[0]).bin_snap(settings, doLog=False)
     for snapPath in snapPaths[1:]:
-        s = snapshot.Snapshot(snapPath).bin_snap(settings)
+        s = snapshot.Snapshot(snapPath).bin_snap(settings, doLog=False)
         for ZKey in ZKeys:
             if ZKey in combinedSnap:
                 combinedSnap[ZKey] = combinedSnap[ZKey] + s[ZKey]
     combinedSnap['Z2'] = combinedSnap['Z2']
     if len(snapPaths) > 1:
         del s
-    plot_stars(combinedSnap, outname, settings)
+    plot_stars(combinedSnap, outname, settings, doLog=True)
     return combinedSnap, settings
 
 def plot_panel(axis, perspective, bin_dict, settings, axes=[0, 1]):
@@ -381,9 +381,13 @@ def gaussian_filter(data, sigma=1.0):
 def plot_stars(binDict,
                outname,
                settings,
-               returnOnly=False):
+               returnOnly=False,
+               doLog=False):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+    if doLog:
+        binDict['Z2'][binDict['Z2'] <= 0] = np.nan
+        binDict['Z2'] = np.log10(binDict['Z2'])
     # Get the settings
     panels = settings['panel_mode']
     scale = settings['log_scale']

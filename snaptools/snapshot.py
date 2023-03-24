@@ -226,7 +226,7 @@ class Snapshot(object):
         if settings is None:
             settings = self.settings
 
-        bin_dict = self.bin_snap(settings)
+        bin_dict = self.bin_snap(settings, doLog=True)
         Z2 = bin_dict['Z2']
         measurements = man.fit_contours(Z2,
                                     settings,
@@ -375,7 +375,7 @@ class Snapshot(object):
         return x_pot, y_pot, z_pot
 
 
-    def bin_snap(self, settings=None):
+    def bin_snap(self, settings=None, doLog=True):
         """
         Create 2D density projection of snapshot in one or more projections.
 
@@ -404,8 +404,6 @@ class Snapshot(object):
         else:
             pos = self.pos[ptype]
             mass = self.masses[ptype]
-
-        scale = settings['log_scale']
 
     #size in units of scale length
         Zmin = settings['in_min']
@@ -453,7 +451,7 @@ class Snapshot(object):
 
         # All panelmodes need this perspective
         Z2, x, y = man.bin_particles(px, py, lengthX,
-                                     lengthY, mass, BINS, scale)
+                                     lengthY, mass, BINS, doLog)
         bin_dict['Z2'] = Z2
         bin_dict['Z2x'] = x
         bin_dict['Z2y'] = y
@@ -736,6 +734,8 @@ class Snapshot(object):
         """
         #if self.bin_dict is None:
         self.bin_dict = self.bin_snap()
+        self.bin_dict['Z2'][self.bin_dict['Z2'] <= 0] = np.nan
+        self.bin_dict['Z2'] = np.log10(self.bin_dict['Z2'])
 
         centerx = (self.bin_dict['Z2x'][:-1] + self.bin_dict['Z2x'][1:]) / 2
         centery = (self.bin_dict['Z2y'][:-1] + self.bin_dict['Z2y'][1:]) / 2
@@ -772,6 +772,8 @@ class Snapshot(object):
         """
         if self.bin_dict is None:
             self.bin_dict = self.bin_snap()
+            self.bin_dict['Z2'][self.bin_dict['Z2'] <= 0] = np.nan
+            self.bin_dict['Z2'] = np.log10(self.bin_dict['Z2'])
 
         surface_density = self.bin_dict['Z2']
         centerx = (self.bin_dict['Z2x'][:-1] + self.bin_dict['Z2x'][1:]) / 2
