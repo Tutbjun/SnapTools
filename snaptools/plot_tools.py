@@ -21,6 +21,7 @@ try:
     from cupyx.scipy.ndimage import gaussian_filter as gf
     import cupy as cp
     usingGPU = True
+    raise Exception()
 except Exception as e: 
     print(e)
     print("Cupy not found, using CPU")
@@ -1410,8 +1411,11 @@ def plot_powerspec(snaps,
                    gadgetGridsize=128,
                    tre_D=True,
                    outfolder='/home/pardy/plots/'):
-    d=plot_combined_3D(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),zlen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
-
+    if tre_D:
+        d=plot_combined_3D(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),zlen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+    else:
+        d=plot_combined(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+    
     y=fftn(d[0]['Z2']-np.mean(d[0]['Z2']))
     pix=np.shape(y)[0]
     y=np.abs(y)**2
@@ -1422,9 +1426,6 @@ def plot_powerspec(snaps,
     else:
         kfreq2D = np.meshgrid(kfreq, kfreq)
         knrm = np.sqrt(kfreq2D[0]**2 + kfreq2D[1]**2)
-
-
-
     knrm = knrm.flatten()
     y = y.flatten()
     kbins = np.arange(0.5, pix//2+1, 1.)
