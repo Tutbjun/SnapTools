@@ -51,7 +51,6 @@ def bin_particles(p1,
         else:
             extents2 = extents2_in
             length2 = extents2_in[1] - extents2_in[0]
-    #!!!!!
     Z2 = histogram2d(
         p1, p2, 
         range=[extents1, extents2],
@@ -63,8 +62,6 @@ def bin_particles(p1,
                                     bins=BINS,density=False)"""
     ind1 = np.linspace(extents1[0], extents1[1], BINS+1)
     ind2 = np.linspace(extents2[0], extents2[1], BINS+1)
-    # Turn number into density (in units Msun/pc^2)
-    Z2 = Z2 / (length2 / BINS * 1E3 * length1 / BINS * 1E3)
     # Log scale the data
     if scale:
         Z2[Z2 < 0] = np.nan
