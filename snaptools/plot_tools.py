@@ -1407,16 +1407,19 @@ def plot_orbit(sims, names, styles=['-'],
 def plot_powerspec(snaps,
                    outname='',
                    SIMSIZE=1000, #kpc 
-                   NBINS=1000,
+                   NBINS=100,
                    gadgetGridsize=128,
                    tre_D=True,
+                   boxsize=0.01,
                    outfolder='/home/pardy/plots/'):
     if tre_D:
-        d=plot_combined_3D(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),zlen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+        d=plot_combined_3D(snaps,visualize=False, parttype='gas',xlen=(0,boxsize),ylen=(0,boxsize),zlen=(0,boxsize),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
+        d[0]['Z2']=d[0]['Z2']*NBINS**3/(boxsize*1000)**3
+        y=fftn(d[0]['Z2']-np.mean(d[0]['Z2']),axes=(0,1,2))
     else:
         d=plot_combined(snaps, parttype='gas',xlen=(0,1),ylen=(0,1),colormap='plasma',NBINS=NBINS,gadgetGridsize=gadgetGridsize,len2kpc=SIMSIZE)
-    
-    y=fftn(d[0]['Z2']-np.mean(d[0]['Z2']))
+        d[0]['Z2']=d[0]['Z2']*NBINS**2/boxsize**2
+        y=fftn((d[0]['Z2']),axes=(0,1))
     pix=np.shape(y)[0]
     y=np.abs(y)**2
     kfreq = np.fft.fftfreq(pix) * pix
@@ -1433,14 +1436,24 @@ def plot_powerspec(snaps,
     Abins, _, _ = stats.binned_statistic(knrm, y,
                                     statistic = "mean",
                                     bins = kbins)
+    
+    
+
+    kbins=kbins/boxsize
+    
     if tre_D:
         Abins *= 4. * np.pi / 3. * (kbins[1:]**3 - kbins[:-1]**3)
     else:
         Abins *= 2. * np.pi * (kbins[1:]**2 - kbins[:-1]**2)
+
+    Abins=Abins*kvals**3
+    kvals=kvals/boxsize
     plt.loglog(kvals, Abins)
-    plt.xlabel("$k$")
+    plt.xlabel("$k$ [Mpc$^{-1}$]")
     plt.ylabel("$P(k)$")
     plt.tight_layout()
     plt.savefig(outfolder+outname+today+'.png',
                 bbox_inches='tight')
     plt.close()
+    op=np.transpose([kvals, Abins])
+    np.savetxt(outfolder+outname+today+'.txt',op,fmt='%.18e')
